@@ -16,6 +16,19 @@ BASE=Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
 SETTINGS_DIR=(Path.home()/'Library'/'Application Support'/'TheVandalStickerprogramma') if sys.platform=='darwin' else Path(os.environ.get('APPDATA',str(Path.home()))) / 'TheVandalStickerprogramma'
 SETTINGS_FILE=SETTINGS_DIR / 'printerinstellingen.json'
 DEFAULT_SETTINGS={'ip':'10.60.1.231','port':'9100','gap':'3','pitch':'32'}
+LAST_EXCEL_FILE=SETTINGS_DIR / 'laatste_excel.json'
+def get_last_excel():
+    try:
+        path=json.loads(LAST_EXCEL_FILE.read_text(encoding='utf-8')).get('path','')
+        return path if path and Path(path).is_file() else None
+    except (OSError,ValueError,TypeError,AttributeError):
+        return None
+def remember_excel(path):
+    try:
+        SETTINGS_DIR.mkdir(parents=True,exist_ok=True)
+        LAST_EXCEL_FILE.write_text(json.dumps({'path':str(Path(path).resolve())}),encoding='utf-8')
+    except OSError:
+        pass
 def load_settings():
     try:
         data=json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
@@ -284,8 +297,9 @@ class App:
         self.total_label=ttk.Label(buttons,text='0 stickers');self.total_label.pack(side='right')
         self.products_tree.bind('<Double-1>',lambda e:self.add())
         self.cart_tree.bind('<Double-1>',self.edit_cart_cell)
-        default=BASE/'producten.xlsx'
-        if default.exists():self.open_excel(str(default))
+        previous=get_last_excel()
+        if previous:self.open_excel(previous)
+        else:self.file_label.configure(text='Geen Excel-bestand geladen. Klik op Excel-bestand openen.')
     def tree(self,parent,cols,labels,widths):
         wrap=ttk.Frame(parent);wrap.pack(fill='both',expand=True)
         tree=ttk.Treeview(wrap,columns=cols,show='headings',selectmode='browse')
@@ -297,7 +311,7 @@ class App:
         if path:self.open_excel(path)
     def open_excel(self,path):
         try:
-            self.products=load_products(path);self.cart={};self.file_label.configure(text=f'Bestand: {path}  |  {len(self.products)} producten');self.refresh();self.refresh_cart()
+            self.products=load_products(path);self.cart={};self.file_label.configure(text=f'Bestand: {path}  |  {len(self.products)} producten');self.refresh();self.refresh_cart();remember_excel(path)
         except Exception as exc:messagebox.showerror('Excel-fout',str(exc))
     def refresh(self):
         term=self.query.get().casefold().strip()
