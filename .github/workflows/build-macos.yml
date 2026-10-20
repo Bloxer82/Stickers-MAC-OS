@@ -35,7 +35,7 @@ jobs:
           python -m PyInstaller --noconfirm --clean --windowed \
             --name TheVandalStickerprogramma \
             --collect-all reportlab --collect-all openpyxl \
-            --add-data 'producten.xlsx:.' sticker_app.py
+            sticker_app.py
           test -d dist/TheVandalStickerprogramma.app
       - name: Pak Mac-app in (behoud bestandsrechten)
         run: |
