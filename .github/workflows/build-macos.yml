@@ -1,0 +1,50 @@
+name: Bouw The Vandal Mac-app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: Intel
+            runner: macos-15
+          - arch: AppleSilicon
+            runner: macos-15-arm64
+    steps:
+      - name: Download broncode
+        uses: actions/checkout@v4
+      - name: Python installeren
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Dependencies installeren
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt 'pyinstaller>=6.10,<7'
+      - name: Bouw Mac-app
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed \
+            --name TheVandalStickerprogramma \
+            --collect-all reportlab --collect-all openpyxl \
+            --add-data 'producten.xlsx:.' sticker_app.py
+          test -d dist/TheVandalStickerprogramma.app
+      - name: Pak Mac-app in (behoud bestandsrechten)
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent TheVandalStickerprogramma.app "TheVandalStickerprogramma-${{ matrix.arch }}.zip"
+      - name: Downloadbaar resultaat publiceren
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheVandalStickerprogramma-${{ matrix.arch }}
+          path: dist/TheVandalStickerprogramma-${{ matrix.arch }}.zip
+          if-no-files-found: error
+          retention-days: 30
